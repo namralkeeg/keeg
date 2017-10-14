@@ -115,7 +115,7 @@ std::size_t writePODType(std::ostream &outstream, const T &data)
     {
         if (outstream)
         {
-            outstream.write(reinterpret_cast<char*>(&data), sizeof(T));
+            outstream.write(reinterpret_cast<const char*>(&data), sizeof(T));
             return sizeof(T);
         }
     }
