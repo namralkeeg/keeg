@@ -33,81 +33,21 @@
 
 namespace keeg { namespace io {
 
-/// Template helper for reading simple integer and float types. Is endian aware for integer types.
+/// Template helper for reading simple integer types. Is endian aware for integer types.
 template<typename T>
 std::size_t readIntType(std::istream &instream, T &data, const endian::Order &endian = endian::Order::native)
 {
-    static_assert(std::is_integral<T>::value, "T must be any integral type!");
+    static_assert(std::is_integral<T>::value
+                  && !std::is_same<T, bool>::value, "T must be an integer type!");
     try
     {
         if (instream)
         {
             if (instream.read(reinterpret_cast<char*>(&data), sizeof(T)))
             {
-                switch (endian) {
-                case endian::Order::big:
-                    endian::big_to_native_inplace(data);
-                    break;
-                case endian::Order::little:
-                    endian::little_to_native_inplace(data);
-                    break;
-                default:
-                    break;
-                }
-
+                endian::convertToEndianInplace<T>(data, endian);
                 return static_cast<std::size_t>(instream.gcount());
             }
-        }
-    }
-    catch(const std::exception &ex)
-    {
-        std::cerr << ex.what() << std::endl;
-        return 0;
-    }
-
-    return 0;
-}
-
-/// Template specialization for bool types. bool isn't standardized between platforms at this time.
-template<>
-std::size_t readIntType<bool>(std::istream &instream, bool &data, const endian::Order &endian)
-{
-    try
-    {
-        if (instream)
-        {
-            std::size_t status{0};
-
-            switch (sizeof(bool)) {
-            case sizeof(uint64_t):
-                uint64_t buffer64;
-                status = readIntType<uint64_t>(instream, buffer64, endian);
-                if(status)
-                    data = static_cast<bool>(buffer64);
-                break;
-            case sizeof(uint32_t):
-                uint32_t buffer32;
-                status = readIntType<uint32_t>(instream, buffer32, endian);
-                if(status)
-                    data = static_cast<bool>(buffer32);
-                break;
-            case sizeof(uint16_t):
-                uint16_t buffer16;
-                status = readIntType<uint16_t>(instream, buffer16, endian);
-                if(status)
-                    data = static_cast<bool>(buffer16);
-                break;
-            case sizeof(uint8_t):
-                uint8_t buffer;
-                status = readIntType<uint8_t>(instream, buffer, endian);
-                if(status)
-                    data = static_cast<bool>(buffer);
-                break;
-            default:
-                break;
-            }
-
-            return status;
         }
     }
     catch(const std::exception &ex)
@@ -147,8 +87,7 @@ std::size_t readPrefixString(std::istream &instream, std::string &data,
                              const bool &isNullTerminated = false)
 {
     static_assert(std::is_integral<T>::value &&
-                  !std::is_same<T, bool>::value &&
-                  !std::is_floating_point<T>::value, "T must be any integer type!");
+                  !std::is_same<T, bool>::value, "T must be any integer type!");
     try
     {
         if (instream)
@@ -179,10 +118,52 @@ std::size_t readPrefixString(std::istream &instream, std::string &data,
     return 0;
 }
 
-/// Function just makes a call to the readIntType bool template specialization.
+/// For bool types. bool isn't standardized between platforms at this time.
 inline std::size_t readBoolean(std::istream &instream, bool &data, const endian::Order &endian = endian::Order::native)
 {
-    return readIntType<bool>(instream, data, endian);
+    try
+    {
+        if (instream)
+        {
+            std::size_t status = 0;
+
+            switch (sizeof(bool)) {
+            case sizeof(uint64_t):
+                uint64_t buffer64;
+                status = readIntType<uint64_t>(instream, buffer64, endian);
+                if(status)
+                    data = static_cast<bool>(buffer64);
+                break;
+            case sizeof(uint32_t):
+                uint32_t buffer32;
+                status = readIntType<uint32_t>(instream, buffer32, endian);
+                if(status)
+                    data = static_cast<bool>(buffer32);
+                break;
+            case sizeof(uint16_t):
+                uint16_t buffer16;
+                status = readIntType<uint16_t>(instream, buffer16, endian);
+                if(status)
+                    data = static_cast<bool>(buffer16);
+                break;
+            case sizeof(uint8_t):
+                uint8_t buffer;
+                status = readIntType<uint8_t>(instream, buffer, endian);
+                if(status)
+                    data = static_cast<bool>(buffer);
+                break;
+            default:
+                break;
+            }
+
+            return status;
+        }
+    }
+    catch(const std::exception &ex)
+    {
+        std::cerr << ex.what() << std::endl;
+        return 0;
+    }
 }
 
 /// Reads length bytes into data starting from index from the input stream.

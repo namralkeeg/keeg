@@ -281,6 +281,84 @@ inline void bytesToIntegral(const std::vector<uint8_t> &source, const std::size_
     destination = big_to_native(*reinterpret_cast<const T*>(&source[index]));
 }
 
+template<typename T>
+inline T convertToEndian(const T &data, const Order &endian)
+{
+    static_assert(std::is_integral<T>::value, "T must be any integral type!");
+
+    T buffer;
+
+    switch (endian) {
+    case Order::big:
+        buffer = native_to_big(data);
+        break;
+    case Order::little:
+        buffer = native_to_little(data);
+        break;
+    default:
+        buffer = data;
+        break;
+    }
+
+    return buffer;
+}
+
+template<typename T>
+inline void convertToEndianInplace(T &data, const Order &endian)
+{
+    static_assert(std::is_integral<T>::value, "T must be any integral type!");
+
+    switch (endian) {
+    case Order::big:
+        native_to_big_inplace(data);
+        break;
+    case Order::little:
+        native_to_little_inplace(data);
+        break;
+    default:
+        break;
+    }
+}
+
+template<typename T>
+inline T convertFromEndian(const T &data, const Order &endian)
+{
+    static_assert(std::is_integral<T>::value, "T must be any integral type!");
+
+    T buffer;
+
+    switch (endian) {
+    case Order::big:
+        buffer = big_to_native(data);
+        break;
+    case Order::little:
+        buffer = little_to_native(data);
+        break;
+    default:
+        buffer = data;
+        break;
+    }
+
+    return buffer;
+}
+
+template<typename T>
+inline void convertFromEndianInplace(T &data, const Order &endian)
+{
+    static_assert(std::is_integral<T>::value, "T must be any integral type!");
+
+    switch (endian) {
+    case Order::big:
+        big_to_native_inplace(data);
+        break;
+    case Order::little:
+        little_to_native_inplace(data);
+        break;
+    default:
+        break;
+    }
+}
+
 } // endian namespace
 } // keeg namespace
 

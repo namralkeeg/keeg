@@ -33,68 +33,20 @@
 
 namespace keeg { namespace io {
 
-/// Template helper for writing simple integer and float types. Is endian aware for integer types.
+/// Template helper for writing simple integer types. Is endian aware for integer types.
 template<typename T>
 std::size_t writeIntType(std::ostream &outstream, const T &data, const endian::Order &endian = endian::Order::native)
 {
-    static_assert(std::is_integral<T>::value, "T must be any integral type!");
+    static_assert(std::is_integral<T>::value
+                  && !std::is_same<T, bool>::value, "T must be an integer type!");
     try
     {
         if (outstream)
         {
-            T buffer{data};
-            switch (endian) {
-            case endian::Order::big:
-                endian::native_to_big_inplace(buffer);
-                break;
-            case endian::Order::little:
-                endian::native_to_little_inplace(buffer);
-                break;
-            default:
-                break;
-            }
-
+            T buffer;
+            buffer = endian::convertToEndian<T>(data, endian);
             outstream.write(reinterpret_cast<char*>(&buffer), sizeof(T));
             return sizeof(T);
-        }
-    }
-    catch(const std::exception &ex)
-    {
-        std::cerr << ex.what() << std::endl;
-        return 0;
-    }
-
-    return 0;
-}
-
-/// Template specialization for bool types. bool isn't standardized between platforms at this time.
-template<>
-std::size_t writeIntType<bool>(std::ostream &outstream, const bool &data, const endian::Order &endian)
-{
-    try
-    {
-        if (outstream)
-        {
-            std::size_t status{0};
-
-            switch (sizeof(bool)) {
-            case sizeof(uint64_t):
-                status = writeIntType<uint64_t>(outstream, static_cast<uint64_t>(data), endian);
-                break;
-            case sizeof(uint32_t):
-                status = writeIntType<uint32_t>(outstream, static_cast<uint32_t>(data), endian);
-                break;
-            case sizeof(uint16_t):
-                status = writeIntType<uint16_t>(outstream, static_cast<uint16_t>(data), endian);
-                break;
-            case sizeof(uint8_t):
-                status = writeIntType<uint8_t>(outstream, static_cast<uint8_t>(data), endian);
-                break;
-            default:
-                break;
-            }
-
-            return status;
         }
     }
     catch(const std::exception &ex)
@@ -134,8 +86,7 @@ std::size_t writePrefixString(std::ostream &outstream, const std::string &data,
                              const bool &isNullTerminated = false)
 {
     static_assert(std::is_integral<T>::value &&
-                  !std::is_same<T, bool>::value &&
-                  !std::is_floating_point<T>::value, "T must be any integer type!");
+                  !std::is_same<T, bool>::value, "T must be any integer type!");
 
     try
     {
@@ -162,11 +113,43 @@ std::size_t writePrefixString(std::ostream &outstream, const std::string &data,
     return 0;
 }
 
-/// Function just maskes a call to the writeIntType bool template specialization.
+/// For bool types. bool isn't standardized between platforms at this time.
 inline std::size_t writeBoolean(std::ostream &outstream, const bool &data,
                                 const endian::Order &endian = endian::Order::native)
 {
-    return writeIntType<bool>(outstream, data, endian);
+    try
+    {
+        if (outstream)
+        {
+            std::size_t status = 0;
+
+            switch (sizeof(bool)) {
+            case sizeof(uint64_t):
+                status = writeIntType<uint64_t>(outstream, static_cast<uint64_t>(data), endian);
+                break;
+            case sizeof(uint32_t):
+                status = writeIntType<uint32_t>(outstream, static_cast<uint32_t>(data), endian);
+                break;
+            case sizeof(uint16_t):
+                status = writeIntType<uint16_t>(outstream, static_cast<uint16_t>(data), endian);
+                break;
+            case sizeof(uint8_t):
+                status = writeIntType<uint8_t>(outstream, static_cast<uint8_t>(data), endian);
+                break;
+            default:
+                break;
+            }
+
+            return status;
+        }
+    }
+    catch(const std::exception &ex)
+    {
+        std::cerr << ex.what() << std::endl;
+        return 0;
+    }
+
+    return 0;
 }
 
 /// Writes length bytes from data into the output stream starting at index.
@@ -235,6 +218,7 @@ inline std::size_t writeZString(std::ostream &outstream, const std::string &data
             std::stringstream ss{data};
             ss << '\0';
             outstream.write(ss.str().c_str(), ss.str().size());
+            return ss.str().size();
         }
     }
     catch(const std::exception &ex)
