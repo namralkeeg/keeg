@@ -30,6 +30,7 @@
 
 #include <keeg/hashing/hashalgorithm.hpp>
 #include <keeg/endian/conversion.hpp>
+#include <array>
 
 /// The CRC 64 ISO polynomial, defined in ISO 3309 and used in HDLC.
 #define CRC_64_ISO_POLYNOMIAL UINT64_C(0xD800000000000000)
@@ -71,7 +72,8 @@ private:
     uint64_t m_polynomial;
     uint64_t m_seed;
     uint64_t m_hash;
-    uint64_t m_lookupTable[MaxSlice][256] = {{0}};
+//    uint64_t m_lookupTable[MaxSlice][256] = {{0}};
+    std::array<std::array<uint64_t, 256>, MaxSlice> m_lookupTable;
 
     void initializeTable();
 };
@@ -79,7 +81,6 @@ private:
 Crc64::Crc64(const uint64_t &polynomial, const uint64_t &seed) :
     HashAlgorithm(), m_polynomial(polynomial), m_seed(seed)
 {
-    //m_hashSize = std::numeric_limits<uint64_t>::digits;
     initialize();
     initializeTable();
 }
@@ -112,45 +113,45 @@ void Crc64::hashCore(const void *data, const size_t &dataLength, const size_t &s
       for (std::size_t unrolling = 0; unrolling < Unroll; unrolling++)
       {
   #if __BYTE_ORDER == __BIG_ENDIAN
-      uint64_t one   = *current++ ^ swap(crc);
-      uint64_t two   = *current++;
-      crc  = m_lookupTable[ 0][ two          & 0xFF] ^
-             m_lookupTable[ 1][(two   >>  8) & 0xFF] ^
-             m_lookupTable[ 2][(two   >> 16) & 0xFF] ^
-             m_lookupTable[ 3][(two   >> 24) & 0xFF] ^
-             m_lookupTable[ 4][(two   >> 32) & 0xFF] ^
-             m_lookupTable[ 5][(two   >> 40) & 0xFF] ^
-             m_lookupTable[ 6][(two   >> 48) & 0xFF] ^
-             m_lookupTable[ 7][(two   >> 56) & 0xFF] ^
-             m_lookupTable[ 8][ one          & 0xFF] ^
-             m_lookupTable[ 9][(one   >>  8) & 0xFF] ^
-             m_lookupTable[10][(one   >> 16) & 0xFF] ^
-             m_lookupTable[11][(one   >> 24) & 0xFF] ^
-             m_lookupTable[12][(one   >> 32  & 0xFF] ^
-             m_lookupTable[13][(one   >> 40) & 0xFF] ^
-             m_lookupTable[14][(one   >> 48) & 0xFF] ^
-             m_lookupTable[15][(one   >> 56) & 0xFF];
-  #else
-      uint64_t one   = *current++ ^ crc;
-      uint64_t two   = *current++;
+          uint64_t one   = *current++ ^ swap(crc);
+          uint64_t two   = *current++;
+          crc  = m_lookupTable[ 0][ two          & 0xFF] ^
+                  m_lookupTable[ 1][(two   >>  8) & 0xFF] ^
+                  m_lookupTable[ 2][(two   >> 16) & 0xFF] ^
+                  m_lookupTable[ 3][(two   >> 24) & 0xFF] ^
+                  m_lookupTable[ 4][(two   >> 32) & 0xFF] ^
+                  m_lookupTable[ 5][(two   >> 40) & 0xFF] ^
+                  m_lookupTable[ 6][(two   >> 48) & 0xFF] ^
+                  m_lookupTable[ 7][(two   >> 56) & 0xFF] ^
+                  m_lookupTable[ 8][ one          & 0xFF] ^
+                  m_lookupTable[ 9][(one   >>  8) & 0xFF] ^
+                  m_lookupTable[10][(one   >> 16) & 0xFF] ^
+                  m_lookupTable[11][(one   >> 24) & 0xFF] ^
+                  m_lookupTable[12][(one   >> 32  & 0xFF] ^
+                                     m_lookupTable[13][(one   >> 40) & 0xFF] ^
+                  m_lookupTable[14][(one   >> 48) & 0xFF] ^
+                  m_lookupTable[15][(one   >> 56) & 0xFF];
+#else
+          uint64_t one   = *current++ ^ crc;
+          uint64_t two   = *current++;
 
-      crc  = m_lookupTable[ 0][(two   >> 56) & 0xFF] ^
-             m_lookupTable[ 1][(two   >> 48) & 0xFF] ^
-             m_lookupTable[ 2][(two   >> 40) & 0xFF] ^
-             m_lookupTable[ 3][(two   >> 32) & 0xFF] ^
-             m_lookupTable[ 4][(two   >> 24) & 0xFF] ^
-             m_lookupTable[ 5][(two   >> 16) & 0xFF] ^
-             m_lookupTable[ 6][(two   >>  8) & 0xFF] ^
-             m_lookupTable[ 7][ two          & 0xFF] ^
-             m_lookupTable[ 8][(one   >> 56) & 0xFF] ^
-             m_lookupTable[ 9][(one   >> 48) & 0xFF] ^
-             m_lookupTable[10][(one   >> 40) & 0xFF] ^
-             m_lookupTable[11][(one   >> 32) & 0xFF] ^
-             m_lookupTable[12][(one   >> 24) & 0xFF] ^
-             m_lookupTable[13][(one   >> 16) & 0xFF] ^
-             m_lookupTable[14][(one   >>  8) & 0xFF] ^
-             m_lookupTable[15][ one          & 0xFF];
-  #endif
+          crc  = m_lookupTable[ 0][(two   >> 56) & 0xFF] ^
+                  m_lookupTable[ 1][(two   >> 48) & 0xFF] ^
+                  m_lookupTable[ 2][(two   >> 40) & 0xFF] ^
+                  m_lookupTable[ 3][(two   >> 32) & 0xFF] ^
+                  m_lookupTable[ 4][(two   >> 24) & 0xFF] ^
+                  m_lookupTable[ 5][(two   >> 16) & 0xFF] ^
+                  m_lookupTable[ 6][(two   >>  8) & 0xFF] ^
+                  m_lookupTable[ 7][ two          & 0xFF] ^
+                  m_lookupTable[ 8][(one   >> 56) & 0xFF] ^
+                  m_lookupTable[ 9][(one   >> 48) & 0xFF] ^
+                  m_lookupTable[10][(one   >> 40) & 0xFF] ^
+                  m_lookupTable[11][(one   >> 32) & 0xFF] ^
+                  m_lookupTable[12][(one   >> 24) & 0xFF] ^
+                  m_lookupTable[13][(one   >> 16) & 0xFF] ^
+                  m_lookupTable[14][(one   >>  8) & 0xFF] ^
+                  m_lookupTable[15][ one          & 0xFF];
+#endif
       }
 
       numBytes -= BytesAtOnce;
