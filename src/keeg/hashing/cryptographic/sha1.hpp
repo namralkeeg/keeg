@@ -30,6 +30,8 @@
 
 #include <keeg/hashing/hashalgorithm.hpp>
 #include <keeg/endian/conversion.hpp>
+#include <algorithm>
+#include <array>
 
 namespace keeg { namespace hashing { namespace cryptographic {
 
@@ -59,9 +61,9 @@ private:
     /// valid bytes in m_buffer
     std::size_t m_bufferSize;
     /// bytes not processed yet
-    uint8_t m_buffer[BLOCK_SIZE];
+    std::array<uint8_t, BLOCK_SIZE> m_buffer;
     /// hash, stored as integers
-    uint32_t m_hash[NUM_HASH_VALUES];
+    std::array<uint32_t, NUM_HASH_VALUES> m_hash;
 
     /// process 64 bytes
     void processBlock(const void *data);
@@ -101,6 +103,7 @@ void Sha1::initialize()
     m_hashValue.clear();
     m_numBytes   = 0;
     m_bufferSize = 0;
+    std::fill(std::begin(m_buffer), std::end(m_buffer), 0);
 
     // according to RFC 1321
     m_hash[0] = UINT32_C(0x67452301);
@@ -127,7 +130,7 @@ void Sha1::hashCore(const void *data, const std::size_t &dataLength, const std::
     // full buffer
     if (m_bufferSize == BLOCK_SIZE)
     {
-        processBlock((void*)m_buffer);
+        processBlock(m_buffer.data());
         m_numBytes  += BLOCK_SIZE;
         m_bufferSize = 0;
     }
@@ -156,9 +159,7 @@ void Sha1::hashCore(const void *data, const std::size_t &dataLength, const std::
 std::vector<uint8_t> Sha1::hashFinal()
 {
     // save old hash if buffer is partially filled
-    uint32_t oldHash[NUM_HASH_VALUES];
-    for (uint32_t i = 0; i < NUM_HASH_VALUES; i++)
-        oldHash[i] = m_hash[i];
+    std::array<uint32_t, NUM_HASH_VALUES> oldHash{m_hash};
 
     // process remaining bytes
     processBuffer();
@@ -171,10 +172,10 @@ std::vector<uint8_t> Sha1::hashFinal()
         v.insert(v.end(), (m_hash[i] >> 16) & 0xFF);
         v.insert(v.end(), (m_hash[i] >>  8) & 0xFF);
         v.insert(v.end(),  m_hash[i]        & 0xFF);
-
-        // restore old hash
-        m_hash[i] = oldHash[i];
     }
+
+    // restore old hash
+    m_hash = oldHash;
 
     return std::move(v);
 }
@@ -191,13 +192,13 @@ void Sha1::processBlock(const void *data)
     // data represented as 16x 32-bit words
     const uint32_t* input = static_cast<const uint32_t*>(data);
 
-    // convert to big endian
-    uint32_t words[80];
-    for (int i = 0; i < 16; i++)
+    std::array<uint32_t, 80> words;
 #if defined(__BYTE_ORDER) && (__BYTE_ORDER != 0) && (__BYTE_ORDER == __BIG_ENDIAN)
-        words[i] = input[i];
+    std::copy(input, input + 16, std::begin(words));
 #else
-        words[i] = endian::swap(input[i]);
+    // convert to big endian
+    std::transform(input, input + 16, std::begin(words),
+                   [](const uint32_t &b) -> uint32_t { return endian::swap(b); });
 #endif
 
     // extend to 80 words
@@ -281,7 +282,7 @@ void Sha1::processBuffer()
     paddedLength /= 8;
 
     // only needed if additional data flows over into a second block
-    uint8_t extra[BLOCK_SIZE];
+    std::array<uint8_t, BLOCK_SIZE> extra;
 
     // append a "1" bit, 128 => binary 10000000
     if (m_bufferSize < BLOCK_SIZE)
@@ -299,11 +300,11 @@ void Sha1::processBuffer()
     uint64_t msgBits = 8 * (m_numBytes + m_bufferSize);
 
     // find right position
-    uint8_t* addLength;
+    std::array<uint8_t, BLOCK_SIZE>::iterator addLength;
     if (paddedLength < BLOCK_SIZE)
-        addLength = m_buffer + paddedLength;
+        addLength = m_buffer.begin() + paddedLength;
     else
-        addLength = extra + paddedLength - BLOCK_SIZE;
+        addLength = extra.begin() + paddedLength - BLOCK_SIZE;
 
     // must be big endian
     *addLength++ = static_cast<uint8_t>((msgBits >> 56) & 0xFF);
@@ -316,11 +317,11 @@ void Sha1::processBuffer()
     *addLength   = static_cast<uint8_t>( msgBits        & 0xFF);
 
     // process blocks
-    processBlock(m_buffer);
+    processBlock(m_buffer.data());
 
     // flowed over into a second block ?
     if (paddedLength > BLOCK_SIZE)
-        processBlock(extra);
+        processBlock(extra.data());
 }
 
 uint32_t Sha1::f1(uint32_t b, uint32_t c, uint32_t d)

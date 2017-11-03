@@ -31,6 +31,7 @@
 #include <keeg/hashing/hashalgorithm.hpp>
 #include <keeg/endian/conversion.hpp>
 #include <algorithm>
+#include <array>
 
 namespace keeg { namespace hashing { namespace cryptographic {
 
@@ -60,9 +61,9 @@ private:
     /// valid bytes in m_buffer
     std::size_t m_bufferSize;
     /// bytes not processed yet
-    uint8_t m_buffer[BLOCK_SIZE];
+    std::array<uint8_t, BLOCK_SIZE> m_buffer;
     /// hash, stored as integers
-    uint32_t m_hash[NUM_HASH_VALUES];
+    std::array<uint32_t, NUM_HASH_VALUES> m_hash;
 
     /// process 64 bytes
     void processBlock(const void *data);
@@ -102,6 +103,7 @@ void Md5::initialize()
     m_hashValue.clear();
     m_numBytes   = 0;
     m_bufferSize = 0;
+    std::fill(std::begin(m_buffer), std::end(m_buffer), 0);
 
     // according to RFC 1321
     m_hash[0] = UINT32_C(0x67452301);
@@ -127,7 +129,7 @@ void Md5::hashCore(const void *data, const std::size_t &dataLength, const std::s
     // full buffer
     if (m_bufferSize == BLOCK_SIZE)
     {
-        processBlock(m_buffer);
+        processBlock(m_buffer.data());
         m_numBytes  += BLOCK_SIZE;
         m_bufferSize = 0;
     }
@@ -156,9 +158,10 @@ void Md5::hashCore(const void *data, const std::size_t &dataLength, const std::s
 std::vector<uint8_t> Md5::hashFinal()
 {
     // save old hash if buffer is partially filled
-    uint32_t oldHash[NUM_HASH_VALUES];
-    for (uint32_t i = 0; i < NUM_HASH_VALUES; i++)
-        oldHash[i] = m_hash[i];
+    //uint32_t oldHash[NUM_HASH_VALUES];
+    std::array<uint32_t, NUM_HASH_VALUES> oldHash{m_hash};
+//    for (uint32_t i = 0; i < NUM_HASH_VALUES; i++)
+//        oldHash[i] = m_hash[i];
 
     // process remaining bytes
     processBuffer();
@@ -167,11 +170,13 @@ std::vector<uint8_t> Md5::hashFinal()
 
     std::vector<uint8_t> v(bytes, bytes + (m_hashSize/std::numeric_limits<uint8_t>::digits));
 
-    for (uint32_t i = 0; i < NUM_HASH_VALUES; ++i)
-    {
-        // restore old hash
-        m_hash[i] = oldHash[i];
-    }
+//    for (uint32_t i = 0; i < NUM_HASH_VALUES; ++i)
+//    {
+//        // restore old hash
+//        m_hash[i] = oldHash[i];
+//    }
+    // restore old hash
+    m_hash = oldHash;
 
     return std::move(v);
 }
@@ -325,7 +330,8 @@ void Md5::processBuffer()
     paddedLength /= 8;
 
     // only needed if additional data flows over into a second block
-    uint8_t extra[BLOCK_SIZE];
+    //uint8_t extra[BLOCK_SIZE];
+    std::array<uint8_t, BLOCK_SIZE> extra;
 
     // append a "1" bit, 128 => binary 10000000
     if (m_bufferSize < BLOCK_SIZE)
@@ -343,11 +349,11 @@ void Md5::processBuffer()
     uint64_t msgBits = 8 * (m_numBytes + m_bufferSize);
 
     // find right position
-    uint8_t* addLength;
+    std::array<uint8_t, BLOCK_SIZE>::iterator addLength;
     if (paddedLength < BLOCK_SIZE)
-        addLength = m_buffer + paddedLength;
+        addLength = m_buffer.begin() + paddedLength;
     else
-        addLength = extra + paddedLength - BLOCK_SIZE;
+        addLength = extra.begin() + paddedLength - BLOCK_SIZE;
 
     // must be little endian
     *addLength++ = msgBits & 0xFF; msgBits >>= 8;
@@ -360,11 +366,11 @@ void Md5::processBuffer()
     *addLength++ = msgBits & 0xFF;
 
     // process blocks
-    processBlock(m_buffer);
+    processBlock(m_buffer.data());
 
     // flowed over into a second block ?
     if (paddedLength > BLOCK_SIZE)
-        processBlock(extra);
+        processBlock(extra.data());
 }
 
 uint32_t Md5::f1(uint32_t b, uint32_t c, uint32_t d)

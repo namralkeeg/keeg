@@ -31,6 +31,8 @@
 #include <keeg/hashing/hashalgorithm.hpp>
 #include <keeg/common/enums.hpp>
 #include <keeg/endian/conversion.hpp>
+#include <algorithm>
+#include <array>
 
 namespace keeg { namespace hashing { namespace cryptographic {
 
@@ -75,7 +77,7 @@ private:
     };
 
     /// hash
-    uint64_t    m_hash[StateSize];
+    std::array<uint64_t, StateSize> m_hash;
     /// size of processed data in bytes
     uint64_t    m_numBytes;
     /// block size (less or equal to MaxBlockSize)
@@ -83,7 +85,7 @@ private:
     /// valid bytes in m_buffer
     std::size_t m_bufferSize;
     /// bytes not processed yet
-    uint8_t     m_buffer[MaxBlockSize];
+    std::array<uint8_t, MaxBlockSize> m_buffer;
     /// variant
     Sha3Bits    m_bits;
 
@@ -93,13 +95,7 @@ private:
     void processBuffer();
 
     /// return x % 5 for 0 <= x <= 9
-    uint32_t mod5(uint32_t x)
-    {
-        if (x < 5)
-            return x;
-
-        return x - 5;
-    }
+    uint32_t mod5(uint32_t x);
 
     static_assert(std::is_same<uint8_t, unsigned char>::value,
                   "uint8_t is required to be implemented as unsigned char!");
@@ -129,8 +125,7 @@ std::size_t Sha3::hashSize()
 
 void Sha3::initialize()
 {
-    for (std::size_t i = 0; i < StateSize; i++)
-        m_hash[i] = 0;
+    std::fill(std::begin(m_hash), std::end(m_hash), 0);
 
     m_hashValue.clear();
     m_numBytes   = 0;
@@ -155,7 +150,7 @@ void Sha3::hashCore(const void *data, const size_t &dataLength, const size_t &st
     // full buffer
     if (m_bufferSize == m_blockSize)
     {
-        processBlock(static_cast<void*>(m_buffer));
+        processBlock(m_buffer.data());
         m_numBytes  += m_blockSize;
         m_bufferSize = 0;
     }
@@ -288,7 +283,15 @@ void Sha3::processBuffer()
     // and add a single set bit
     m_buffer[offset - 1] |= 0x80;
 
-    processBlock(m_buffer);
+    processBlock(m_buffer.data());
+}
+
+uint32_t Sha3::mod5(uint32_t x)
+{
+    if (x < 5)
+        return x;
+
+    return x - 5;
 }
 
 } // cryptographic namespace

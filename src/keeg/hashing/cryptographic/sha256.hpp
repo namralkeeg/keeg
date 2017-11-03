@@ -30,6 +30,8 @@
 
 #include <keeg/hashing/hashalgorithm.hpp>
 #include <keeg/endian/conversion.hpp>
+#include <algorithm>
+#include <array>
 
 namespace keeg { namespace hashing { namespace cryptographic {
 
@@ -59,9 +61,9 @@ private:
     /// valid bytes in m_buffer
     std::size_t m_bufferSize;
     /// bytes not processed yet
-    uint8_t m_buffer[BLOCK_SIZE];
+    std::array<uint8_t, BLOCK_SIZE> m_buffer;
     /// hash, stored as integers
-    uint32_t m_hash[NUM_HASH_VALUES];
+    std::array<uint32_t, NUM_HASH_VALUES> m_hash;
 
     /// process 64 bytes
     void processBlock(const void *data);
@@ -71,7 +73,6 @@ private:
 
     // mix functions for processBlock()
     inline uint32_t f1(uint32_t e, uint32_t f, uint32_t g);
-
     inline uint32_t f2(uint32_t a, uint32_t b, uint32_t c);
 
     static_assert(std::is_same<uint8_t, unsigned char>::value,
@@ -102,6 +103,7 @@ void Sha256::initialize()
     m_hashValue.clear();
     m_numBytes   = 0;
     m_bufferSize = 0;
+    std::fill(std::begin(m_buffer), std::end(m_buffer), 0);
 
     // according to RFC 1321
     m_hash[0] = UINT32_C(0x6a09e667);
@@ -131,7 +133,7 @@ void Sha256::hashCore(const void *data, const std::size_t &dataLength, const std
     // full buffer
     if (m_bufferSize == BLOCK_SIZE)
     {
-        processBlock(m_buffer);
+        processBlock(m_buffer.data());
         m_numBytes  += BLOCK_SIZE;
         m_bufferSize = 0;
     }
@@ -199,13 +201,13 @@ void Sha256::processBlock(const void *data)
     const uint32_t* input = static_cast<const uint32_t*>(data);
 
     // convert to big endian
-    uint32_t words[64];
-    int i;
-    for (i = 0; i < 16; i++)
+    std::array<uint32_t, 64> words;
 #if defined(__BYTE_ORDER) && (__BYTE_ORDER != 0) && (__BYTE_ORDER == __BIG_ENDIAN)
-        words[i] =      input[i];
+    std::copy(input, input + 16, std::begin(words));
 #else
-        words[i] = endian::swap(input[i]);
+    // convert to big endian
+    std::transform(input, input + 16, std::begin(words),
+                   [](const uint32_t &b) -> uint32_t { return endian::swap(b); });
 #endif
 
     uint32_t x,y; // temporaries
@@ -231,6 +233,7 @@ void Sha256::processBlock(const void *data)
     x = a + f1(f,g,h) + 0xc19bf174 + words[15]; y = f2(b,c,d); e += x; a = x + y;
 
     // extend to 24 words
+    int i = 16;
     for (; i < 24; i++)
         words[i] = words[i-16] +
                 (rotateRight(words[i-15],  7) ^ rotateRight(words[i-15], 18) ^ (words[i-15] >>  3)) +
@@ -367,7 +370,7 @@ void Sha256::processBuffer()
     paddedLength /= 8;
 
     // only needed if additional data flows over into a second block
-    uint8_t extra[BLOCK_SIZE];
+    std::array<uint8_t, BLOCK_SIZE> extra;
 
     // append a "1" bit, 128 => binary 10000000
     if (m_bufferSize < BLOCK_SIZE)
@@ -383,12 +386,13 @@ void Sha256::processBuffer()
 
     // add message length in bits as 64 bit number
     uint64_t msgBits = 8 * (m_numBytes + m_bufferSize);
+
     // find right position
-    uint8_t* addLength;
+    std::array<uint8_t, BLOCK_SIZE>::iterator addLength;
     if (paddedLength < BLOCK_SIZE)
-        addLength = m_buffer + paddedLength;
+        addLength = m_buffer.begin() + paddedLength;
     else
-        addLength = extra + paddedLength - BLOCK_SIZE;
+        addLength = extra.begin() + paddedLength - BLOCK_SIZE;
 
     // must be big endian
     *addLength++ = static_cast<uint8_t>((msgBits >> 56) & 0xFF);
@@ -401,11 +405,11 @@ void Sha256::processBuffer()
     *addLength   = static_cast<uint8_t>( msgBits        & 0xFF);
 
     // process blocks
-    processBlock(m_buffer);
+    processBlock(m_buffer.data());
 
     // flowed over into a second block ?
     if (paddedLength > BLOCK_SIZE)
-        processBlock(extra);
+        processBlock(extra.data());
 }
 
 uint32_t Sha256::f1(uint32_t e, uint32_t f, uint32_t g)
