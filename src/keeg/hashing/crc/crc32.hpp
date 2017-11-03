@@ -30,6 +30,7 @@
 
 #include <keeg/hashing/hashalgorithm.hpp>
 #include <keeg/endian/conversion.hpp>
+#include <array>
 
 // zlib's CRC32 polynomial
 #define ZLIB_POLYNOMIAL UINT32_C(0xEDB88320)
@@ -67,7 +68,7 @@ private:
     uint32_t m_polynomial;
     uint32_t m_seed;
     uint32_t m_hash;
-    uint32_t m_lookupTable[MaxSlice][256] = {{0}};
+    std::array<std::array<uint32_t, 256>, MaxSlice> m_lookupTable;
 
     void initializeTable();
 
@@ -100,58 +101,58 @@ void Crc32::hashCore(const void *data, const std::size_t &dataLength, const std:
     const uint32_t* current = reinterpret_cast<const uint32_t*>(currentByte);
     std::size_t numBytes = dataLength;
 
-    /// enabling optimization (at least -O2) automatically unrolls the inner for-loop
+    // enabling optimization (at least -O2) automatically unrolls the inner for-loop
     const std::size_t Unroll = 4;
     const std::size_t BytesAtOnce = 16 * Unroll;
 
-    /// Process 64 bytes each pass.
+    // Process 64 bytes each pass.
     while (numBytes >= BytesAtOnce)
     {
       for (size_t unrolling = 0; unrolling < Unroll; unrolling++)
       {
   #if __BYTE_ORDER == __BIG_ENDIAN
-      uint32_t one   = *current++ ^ swap(crc);
-      uint32_t two   = *current++;
-      uint32_t three = *current++;
-      uint32_t four  = *current++;
-      crc  = m_lookupTable[ 0][ four         & 0xFF] ^
-             m_lookupTable[ 1][(four  >>  8) & 0xFF] ^
-             m_lookupTable[ 2][(four  >> 16) & 0xFF] ^
-             m_lookupTable[ 3][(four  >> 24) & 0xFF] ^
-             m_lookupTable[ 4][ three        & 0xFF] ^
-             m_lookupTable[ 5][(three >>  8) & 0xFF] ^
-             m_lookupTable[ 6][(three >> 16) & 0xFF] ^
-             m_lookupTable[ 7][(three >> 24) & 0xFF] ^
-             m_lookupTable[ 8][ two          & 0xFF] ^
-             m_lookupTable[ 9][(two   >>  8) & 0xFF] ^
-             m_lookupTable[10][(two   >> 16) & 0xFF] ^
-             m_lookupTable[11][(two   >> 24) & 0xFF] ^
-             m_lookupTable[12][ one          & 0xFF] ^
-             m_lookupTable[13][(one   >>  8) & 0xFF] ^
-             m_lookupTable[14][(one   >> 16) & 0xFF] ^
-             m_lookupTable[15][(one   >> 24) & 0xFF];
-  #else
-      uint32_t one   = *current++ ^ crc;
-      uint32_t two   = *current++;
-      uint32_t three = *current++;
-      uint32_t four  = *current++;
-      crc  = m_lookupTable[ 0][(four  >> 24) & 0xFF] ^
-             m_lookupTable[ 1][(four  >> 16) & 0xFF] ^
-             m_lookupTable[ 2][(four  >>  8) & 0xFF] ^
-             m_lookupTable[ 3][ four         & 0xFF] ^
-             m_lookupTable[ 4][(three >> 24) & 0xFF] ^
-             m_lookupTable[ 5][(three >> 16) & 0xFF] ^
-             m_lookupTable[ 6][(three >>  8) & 0xFF] ^
-             m_lookupTable[ 7][ three        & 0xFF] ^
-             m_lookupTable[ 8][(two   >> 24) & 0xFF] ^
-             m_lookupTable[ 9][(two   >> 16) & 0xFF] ^
-             m_lookupTable[10][(two   >>  8) & 0xFF] ^
-             m_lookupTable[11][ two          & 0xFF] ^
-             m_lookupTable[12][(one   >> 24) & 0xFF] ^
-             m_lookupTable[13][(one   >> 16) & 0xFF] ^
-             m_lookupTable[14][(one   >>  8) & 0xFF] ^
-             m_lookupTable[15][ one          & 0xFF];
-  #endif
+          uint32_t one   = *current++ ^ swap(crc);
+          uint32_t two   = *current++;
+          uint32_t three = *current++;
+          uint32_t four  = *current++;
+          crc  = m_lookupTable[ 0][ four         & 0xFF] ^
+                  m_lookupTable[ 1][(four  >>  8) & 0xFF] ^
+                  m_lookupTable[ 2][(four  >> 16) & 0xFF] ^
+                  m_lookupTable[ 3][(four  >> 24) & 0xFF] ^
+                  m_lookupTable[ 4][ three        & 0xFF] ^
+                  m_lookupTable[ 5][(three >>  8) & 0xFF] ^
+                  m_lookupTable[ 6][(three >> 16) & 0xFF] ^
+                  m_lookupTable[ 7][(three >> 24) & 0xFF] ^
+                  m_lookupTable[ 8][ two          & 0xFF] ^
+                  m_lookupTable[ 9][(two   >>  8) & 0xFF] ^
+                  m_lookupTable[10][(two   >> 16) & 0xFF] ^
+                  m_lookupTable[11][(two   >> 24) & 0xFF] ^
+                  m_lookupTable[12][ one          & 0xFF] ^
+                  m_lookupTable[13][(one   >>  8) & 0xFF] ^
+                  m_lookupTable[14][(one   >> 16) & 0xFF] ^
+                  m_lookupTable[15][(one   >> 24) & 0xFF];
+#else
+          uint32_t one   = *current++ ^ crc;
+          uint32_t two   = *current++;
+          uint32_t three = *current++;
+          uint32_t four  = *current++;
+          crc  = m_lookupTable[ 0][(four  >> 24) & 0xFF] ^
+                  m_lookupTable[ 1][(four  >> 16) & 0xFF] ^
+                  m_lookupTable[ 2][(four  >>  8) & 0xFF] ^
+                  m_lookupTable[ 3][ four         & 0xFF] ^
+                  m_lookupTable[ 4][(three >> 24) & 0xFF] ^
+                  m_lookupTable[ 5][(three >> 16) & 0xFF] ^
+                  m_lookupTable[ 6][(three >>  8) & 0xFF] ^
+                  m_lookupTable[ 7][ three        & 0xFF] ^
+                  m_lookupTable[ 8][(two   >> 24) & 0xFF] ^
+                  m_lookupTable[ 9][(two   >> 16) & 0xFF] ^
+                  m_lookupTable[10][(two   >>  8) & 0xFF] ^
+                  m_lookupTable[11][ two          & 0xFF] ^
+                  m_lookupTable[12][(one   >> 24) & 0xFF] ^
+                  m_lookupTable[13][(one   >> 16) & 0xFF] ^
+                  m_lookupTable[14][(one   >>  8) & 0xFF] ^
+                  m_lookupTable[15][ one          & 0xFF];
+#endif
       }
 
       numBytes -= BytesAtOnce;
