@@ -24,6 +24,8 @@
 
 #include <keeg/hashing/hashalgorithm.hpp>
 #include <keeg/endian/conversion.hpp>
+#include <algorithm>
+#include <array>
 
 namespace keeg { namespace hashing { namespace noncryptographic {
 
@@ -54,8 +56,8 @@ private:
     /// temporarily store up to 31 bytes between multiple add() calls
     static const uint64_t MaxBufferSize = 31+1;
 
-    uint64_t  m_state[4];
-    uint8_t   m_buffer[MaxBufferSize];
+    std::array<uint64_t, 4> m_state;
+    std::array<uint8_t, MaxBufferSize> m_buffer;
     uint32_t  m_bufferSize;
     uint64_t  m_totalLength;
     uint64_t  m_seed;
@@ -91,6 +93,7 @@ void XxHash64::initialize()
     m_bufferSize  = 0;
     m_totalLength = 0;
     m_hashValue.clear();
+    std::fill(std::begin(m_buffer), std::end(m_buffer), 0);
 }
 
 void XxHash64::hashCore(const void *data, const size_t &dataLength, const size_t &startIndex)
@@ -122,7 +125,7 @@ void XxHash64::hashCore(const void *data, const size_t &dataLength, const size_t
                 m_buffer[m_bufferSize++] = *current++;
 
             // process these 32 bytes (4x8)
-            process(m_buffer, m_state[0], m_state[1], m_state[2], m_state[3]);
+            process(m_buffer.data(), m_state[0], m_state[1], m_state[2], m_state[3]);
         }
 
         // copying state to local variables helps optimizer A LOT
@@ -139,8 +142,7 @@ void XxHash64::hashCore(const void *data, const size_t &dataLength, const size_t
 
         // copy remainder to temporary buffer
         m_bufferSize = static_cast<uint32_t>(stop - current);
-        for (uint32_t i = 0; i < m_bufferSize; i++)
-            m_buffer[i] = current[i];
+        std::copy(current, current + m_bufferSize, std::begin(m_buffer));
     }
 }
 
@@ -168,18 +170,18 @@ std::vector<uint8_t> XxHash64::hashFinal()
     result += m_totalLength;
 
     // process remaining bytes in temporary buffer
-    const uint8_t* data = m_buffer;
+    const uint8_t* data = m_buffer.data();
     // point beyond last byte
     const uint8_t* stop = data + m_bufferSize;
 
     // at least 8 bytes left ? => eat 8 bytes per step
     for (; data + 8 <= stop; data += 8)
-        result = rotateLeft(result ^ processSingle(0, *reinterpret_cast<const uint64_t*>(data)), 27) * Prime1 + Prime4;
+        result = rotateLeft(result ^ processSingle(0, GET64BITS(data)), 27) * Prime1 + Prime4;
 
     // 4 bytes left ? => eat those
     if (data + 4 <= stop)
     {
-        result = rotateLeft(result ^ (*reinterpret_cast<const uint32_t*>(data)) * Prime1, 23) * Prime2 + Prime3;
+        result = rotateLeft(result ^ GET32BITS(data) * Prime1, 23) * Prime2 + Prime3;
         data  += 4;
     }
 

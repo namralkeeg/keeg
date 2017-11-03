@@ -24,6 +24,8 @@
 
 #include <keeg/hashing/hashalgorithm.hpp>
 #include <keeg/endian/conversion.hpp>
+#include <algorithm>
+#include <array>
 
 namespace keeg { namespace hashing { namespace noncryptographic {
 
@@ -55,8 +57,8 @@ private:
     static const uint32_t MaxBufferSize = 15+1;
 
     // internal state and temporary buffer
-    uint32_t  m_state[4]; // state[2] == seed if totalLength < MaxBufferSize
-    uint8_t   m_buffer[MaxBufferSize];
+    std::array<uint32_t, 4> m_state; // state[2] == seed if totalLength < MaxBufferSize
+    std::array<uint8_t, MaxBufferSize> m_buffer;
     uint32_t  m_bufferSize;
     uint64_t  m_totalLength;
     uint32_t  m_seed;
@@ -89,6 +91,7 @@ void XxHash32::initialize()
     m_bufferSize  = 0;
     m_totalLength = 0;
     m_hashValue.clear();
+    std::fill(std::begin(m_buffer), std::end(m_buffer), 0);
 }
 
 void XxHash32::hashCore(const void *data, const size_t &dataLength, const size_t &startIndex)
@@ -106,7 +109,6 @@ void XxHash32::hashCore(const void *data, const size_t &dataLength, const size_t
         // just add new data
         while (length-- > 0)
             m_buffer[m_bufferSize++] = *current++;
-        //return true;
     }
     else
     {
@@ -122,7 +124,7 @@ void XxHash32::hashCore(const void *data, const size_t &dataLength, const size_t
                 m_buffer[m_bufferSize++] = *current++;
 
             // process these 16 bytes (4x4)
-            process(m_buffer, m_state[0], m_state[1], m_state[2], m_state[3]);
+            process(m_buffer.data(), m_state[0], m_state[1], m_state[2], m_state[3]);
         }
 
         // copying state to local variables helps optimizer A LOT
@@ -141,8 +143,7 @@ void XxHash32::hashCore(const void *data, const size_t &dataLength, const size_t
 
         // copy remainder to temporary buffer
         m_bufferSize = static_cast<uint32_t>(stop - current);
-        for (uint32_t i = 0; i < m_bufferSize; i++)
-            m_buffer[i] = current[i];
+        std::copy(current, current + m_bufferSize, std::begin(m_buffer));
     }
 }
 
@@ -165,14 +166,13 @@ std::vector<uint8_t> XxHash32::hashFinal()
      }
 
      // process remaining bytes in temporary buffer
-     const uint8_t* data = m_buffer;
+     const uint8_t* data = m_buffer.data();
      // point beyond last byte
      const uint8_t* stop = data + m_bufferSize;
 
      // at least 4 bytes left ? => eat 4 bytes per step
      for (; data + 4 <= stop; data += 4)
-         result = rotateLeft(result + (*reinterpret_cast<const uint32_t*>(data)) * Prime3, 17) * Prime4;
-         //result = rotateLeft(result + *(uint32_t*)data * Prime3, 17) * Prime4;
+         result = rotateLeft(result + GET32BITS(data) * Prime3, 17) * Prime4;
 
      // take care of remaining 0..3 bytes, eat 1 byte per step
      while (data != stop)
