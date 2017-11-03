@@ -45,7 +45,7 @@ protected:
 
 private:
     static const std::size_t m_hashSize = std::numeric_limits<uint32_t>::digits;
-    const uint32_t BitsInUnsignedInt = UINT32CAST(m_hashSize)/*UINT32CONST(sizeof(uint32_t) * 8)*/;
+    const uint32_t BitsInUnsignedInt = UINT32CAST(m_hashSize);
     const uint32_t ThreeQuarters     = UINT32CAST((BitsInUnsignedInt  * 3) / 4);
     const uint32_t OneEighth         = UINT32CAST(BitsInUnsignedInt / 8);
     const uint32_t HighBits          = UINT32CONST(0xFFFFFFFF) << (BitsInUnsignedInt - OneEighth);
@@ -77,9 +77,9 @@ void PJWHash32::hashCore(const void *data, const std::size_t &dataLength, const 
     const uint8_t *current = static_cast<const uint8_t*>(data) + startIndex;
     uint32_t test = 0;
 
-    for(std::size_t i = 0; i < dataLength; ++i)
+    for(std::size_t i = 0; i < dataLength; ++current, ++i)
     {
-        m_hash = (m_hash << OneEighth) + current[i];
+        m_hash = (m_hash << OneEighth) + *current;
 
         if((test = m_hash & HighBits) != 0)
         {

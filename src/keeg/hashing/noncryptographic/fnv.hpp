@@ -51,9 +51,9 @@ void calcFnv1Hash(const void* data, std::size_t dataLength, const std::size_t &s
 
     const uint8_t *current = static_cast<const uint8_t*>(data) + startIndex;
 
-    for (std::size_t i = 0; i < dataLength; ++i)
+    for (std::size_t i = 0; i < dataLength; ++current, ++i)
     {
-        hashValue = (fnvPrime * hashValue) ^ current[i];
+        hashValue = (fnvPrime * hashValue) ^ *current;
     }
 }
 
@@ -66,9 +66,9 @@ void calcFnv1aHash(const void* data, std::size_t dataLength, const std::size_t &
 
     const uint8_t *current = static_cast<const uint8_t*>(data) + startIndex;
 
-    for (std::size_t i = 0; i < dataLength; ++i)
+    for (std::size_t i = 0; i < dataLength; ++current, ++i)
     {
-        hashValue = (current[i] ^ hashValue) * fnvPrime;
+        hashValue = (*current ^ hashValue) * fnvPrime;
     }
 }
 

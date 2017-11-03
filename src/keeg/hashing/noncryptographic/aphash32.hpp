@@ -71,10 +71,10 @@ void APHash32::hashCore(const void *data, const std::size_t &dataLength, const s
 {
     const uint8_t *current = static_cast<const uint8_t*>(data) + startIndex;
 
-    for(std::size_t i = 0; i < dataLength; ++i)
+    for(std::size_t i = 0; i < dataLength; ++current, ++i)
     {
-       m_hash ^= ((i & 0x01) == 0) ? (  (m_hash <<  7) ^ current[i] ^ (m_hash >> 3)) :
-                                     (~((m_hash << 11) ^ current[i] ^ (m_hash >> 5)));
+       m_hash ^= ((i & 0x01) == 0) ? (  (m_hash <<  7) ^ *current ^ (m_hash >> 3)) :
+                                     (~((m_hash << 11) ^ *current ^ (m_hash >> 5)));
     }
 }
 

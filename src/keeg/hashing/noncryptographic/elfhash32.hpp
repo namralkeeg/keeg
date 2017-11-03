@@ -71,9 +71,9 @@ void ELFHash32::hashCore(const void *data, const size_t &dataLength, const size_
     const uint8_t *current = static_cast<const uint8_t*>(data) + startIndex;
 
     uint32_t x = 0;
-    for (std::size_t i = 0; i < dataLength; ++i)
+    for (std::size_t i = 0; i < dataLength; ++current, ++i)
     {
-        m_hash = (m_hash << 4) + current[i];
+        m_hash = (m_hash << 4) + *current;
         if ((x = m_hash & INT32_C(0xF0000000)) != 0)
         {
             m_hash ^= (x >> 24);

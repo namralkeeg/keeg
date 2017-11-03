@@ -71,9 +71,9 @@ void JSHash32::hashCore(const void *data, const std::size_t &dataLength, const s
 {
     const uint8_t *current = static_cast<const uint8_t*>(data) + startIndex;
 
-    for (std::size_t i = 0; i < dataLength; ++i)
+    for (std::size_t i = 0; i < dataLength; ++current, ++i)
     {
-        m_hash ^= ((m_hash << 5) + current[i] + (m_hash >> 2));
+        m_hash ^= ((m_hash << 5) + *current + (m_hash >> 2));
     }
 }
 

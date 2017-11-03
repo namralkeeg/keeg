@@ -65,13 +65,13 @@ void SDBMHash32::initialize()
     m_hashValue.clear();
 }
 
-void SDBMHash32::hashCore(const void *data, const size_t &dataLength, const size_t &startIndex)
+void SDBMHash32::hashCore(const void *data, const std::size_t &dataLength, const std::size_t &startIndex)
 {
     const uint8_t *current = static_cast<const uint8_t*>(data) + startIndex;
 
-    for (std::size_t i = 0; i < dataLength; ++i)
+    for (std::size_t i = 0; i < dataLength; ++current, ++i)
     {
-        m_hash = current[i] + (m_hash << 6) + (m_hash << 16) - m_hash;
+        m_hash = *current + (m_hash << 6) + (m_hash << 16) - m_hash;
     }
 }
 

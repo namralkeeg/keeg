@@ -71,9 +71,9 @@ void BKDRHash32::hashCore(const void *data, const std::size_t &dataLength, const
 {
     const uint8_t *current = static_cast<const uint8_t*>(data) + startIndex;
 
-    for (uint32_t i = 0; i < dataLength; ++i)
+    for (uint32_t i = 0; i < dataLength; ++current, ++i)
     {
-        m_hash = (m_hash * m_seed) + current[i];
+        m_hash = (m_hash * m_seed) + *current;
     }
 }
 
