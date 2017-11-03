@@ -69,31 +69,20 @@ private:
     /// process everything left in the internal buffer
     void processBuffer();
 
+    // mix functions for processBlock()
+    inline uint32_t f1(uint32_t b, uint32_t c, uint32_t d);
+    inline uint32_t f2(uint32_t b, uint32_t c, uint32_t d);
+    inline uint32_t f3(uint32_t b, uint32_t c, uint32_t d);
+
     static_assert(std::is_same<uint8_t, unsigned char>::value,
                   "uint8_t is required to be implemented as unsigned char!");
 };
 
 namespace {
 
-#ifndef rotateLeft(x,y)
+#ifndef rotateLeft
     #define rotateLeft(x,y) keeg::endian::rotateLeft((x),(y))
 #endif
-
-// mix functions for processBlock()
-inline uint32_t f1(uint32_t b, uint32_t c, uint32_t d)
-{
-    return d ^ (b & (c ^ d)); // original: f = (b & c) | ((~b) & d);
-}
-
-inline uint32_t f2(uint32_t b, uint32_t c, uint32_t d)
-{
-    return b ^ c ^ d;
-}
-
-inline uint32_t f3(uint32_t b, uint32_t c, uint32_t d)
-{
-    return (b & c) | (b & d) | (c & d);
-}
 
 } // anonymous namespace
 
@@ -332,6 +321,21 @@ void Sha1::processBuffer()
     // flowed over into a second block ?
     if (paddedLength > BLOCK_SIZE)
         processBlock(extra);
+}
+
+uint32_t Sha1::f1(uint32_t b, uint32_t c, uint32_t d)
+{
+    return d ^ (b & (c ^ d)); // original: f = (b & c) | ((~b) & d);
+}
+
+uint32_t Sha1::f2(uint32_t b, uint32_t c, uint32_t d)
+{
+    return b ^ c ^ d;
+}
+
+uint32_t Sha1::f3(uint32_t b, uint32_t c, uint32_t d)
+{
+    return (b & c) | (b & d) | (c & d);
 }
 
 } // cryptographic namespace

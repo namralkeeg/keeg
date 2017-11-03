@@ -62,7 +62,7 @@ private:
     static const uint32_t MaxBlockSize = 200 - 2 * (224 / 8);
 
     static const uint32_t Rounds = 24;
-    static const uint64_t XorMasks[Rounds] =
+    const uint64_t XorMasks[Rounds] =
     {
         UINT64_C(0x0000000000000001), UINT64_C(0x0000000000008082), UINT64_C(0x800000000000808a),
         UINT64_C(0x8000000080008000), UINT64_C(0x000000000000808b), UINT64_C(0x0000000080000001),
@@ -92,6 +92,15 @@ private:
     /// process everything left in the internal buffer
     void processBuffer();
 
+    /// return x % 5 for 0 <= x <= 9
+    uint32_t mod5(uint32_t x)
+    {
+        if (x < 5)
+            return x;
+
+        return x - 5;
+    }
+
     static_assert(std::is_same<uint8_t, unsigned char>::value,
                   "uint8_t is required to be implemented as unsigned char!");
 };
@@ -101,18 +110,9 @@ namespace
 {
 
 /// rotate left and wrap around to the right
-#ifndef rotateLeft(x,y)
+#ifndef rotateLeft
     #define rotateLeft(x,y) keeg::endian::rotateLeft((x),(y))
 #endif
-
-/// return x % 5 for 0 <= x <= 9
-uint32_t mod5(uint32_t x)
-{
-    if (x < 5)
-        return x;
-
-    return x - 5;
-}
 
 } // anonymous namespace
 

@@ -31,7 +31,7 @@
 #include <keeg/hashing/hashalgorithm.hpp>
 #include <keeg/endian/conversion.hpp>
 
-namespace keeg { namespace hashing {
+namespace keeg { namespace hashing { namespace cryptographic {
 
 class Sha256 : public HashAlgorithm
 {
@@ -69,6 +69,11 @@ private:
     /// process everything left in the internal buffer
     void processBuffer();
 
+    // mix functions for processBlock()
+    inline uint32_t f1(uint32_t e, uint32_t f, uint32_t g);
+
+    inline uint32_t f2(uint32_t a, uint32_t b, uint32_t c);
+
     static_assert(std::is_same<uint8_t, unsigned char>::value,
                   "uint8_t is required to be implemented as unsigned char!");
 };
@@ -76,24 +81,9 @@ private:
 namespace
 {
 
-#ifndef rotateRight(x,y)
+#ifndef rotateRight
     #define rotateRight(x,y) keeg::endian::rotateRight((x),(y))
 #endif
-
-// mix functions for processBlock()
-inline uint32_t f1(uint32_t e, uint32_t f, uint32_t g)
-{
-    uint32_t term1 = rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25);
-    uint32_t term2 = (e & f) ^ (~e & g); //(g ^ (e & (f ^ g)))
-    return term1 + term2;
-}
-
-inline uint32_t f2(uint32_t a, uint32_t b, uint32_t c)
-{
-    uint32_t term1 = rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22);
-    uint32_t term2 = ((a | b) & c) | (a & b); //(a & (b ^ c)) ^ (b & c);
-    return term1 + term2;
-}
 
 } // anonymous namespace
 
@@ -418,6 +408,21 @@ void Sha256::processBuffer()
         processBlock(extra);
 }
 
+uint32_t Sha256::f1(uint32_t e, uint32_t f, uint32_t g)
+{
+    uint32_t term1 = rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25);
+    uint32_t term2 = (e & f) ^ (~e & g); //(g ^ (e & (f ^ g)))
+    return term1 + term2;
+}
+
+uint32_t Sha256::f2(uint32_t a, uint32_t b, uint32_t c)
+{
+    uint32_t term1 = rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22);
+    uint32_t term2 = ((a | b) & c) | (a & b); //(a & (b ^ c)) ^ (b & c);
+    return term1 + term2;
+}
+
+} // cryptographic namespace
 } // hashing namespace
 } // keeg namespace
 
